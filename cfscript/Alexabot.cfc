@@ -164,9 +164,9 @@ component output="false" displayname="AlexaBot" extends="Alexa" hint="I am an ex
 
 	}
 	
-	public void function onLaunch( required struct sessionInfo ) {
+	public void function onLaunch() {
 
-		super.onLaunch(arguments.sessionInfo);
+		super.onLaunch();
 
 		say( "Welcome to the State Bar" );
 		say( "You can ask for information about any member or ask about events." );

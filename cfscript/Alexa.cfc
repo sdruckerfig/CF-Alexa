@@ -120,7 +120,7 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	public void function setText( required string content ) {
 
 		if( structKeyExists( this.AlexaResponse.response.card, "image" ) {
-			this.AlexaResponse.response.card.text = arguments.content;
+			this.AlexaResponse.response.card[ "text" ] = arguments.content;
 		} else {
 			this.AlexaResponse.response.card.content = arguments.content;
 		}
@@ -134,7 +134,7 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	* @param 		largeImageUrl {String} - I am the url to a 1200w x 800h version of the image
 	* @return		void
 	*/
-	public void function setImage( required string smallImageUrl, string largeImageUrl = '' ) {
+	public void function setImage( required string smallImageUrl, string largeImageUrl = "" ) {
 
 		this.AlexaResponse.response.card.type = "Standard";
 		this.AlexaResponse.response.card[ "image" ] = {
@@ -144,8 +144,10 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 			this.AlexaResponse.response.card[ "image" ][ "largeImageUrl" ] = arguments.largeImageUrl;
 		}
 
-		this.AlexaResponse.response.card[ "text" ] = this.AlexaResponse.response.card[ "content" ];
-		structDelete( this.AlexaResponse.response.card, "content" );
+		if( structKeyExists( this.AlexaResponse.response.card, "content" ) ) {
+			this.AlexaResponse.response.card[ "text" ] = this.AlexaResponse.response.card.content;
+			structDelete( this.AlexaResponse.response.card, "content" );
+		}
 
 	}
 
@@ -160,9 +162,9 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	* @description	I set up a new session
 	* @return		void
 	*/
-	private void function onLaunch( required struct sessionInfo ) {
+	private void function onLaunch() {
 
-		application.AlexaSessions[ arguments.sessionInfo.sessionId ] = {
+		application.AlexaSessions[ this.sessionId ] = {
 			history = []
 		};
 
@@ -173,9 +175,9 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	* @description	I clear out sessions
 	* @return		void
 	*/
-	public void function onSessionEnd( required struct sessionInfo ) {
+	public void function onSessionEnd() {
 
-		structDelete( application.AlexaSessions, sessionInfo.sessionId );
+		structDelete( application.AlexaSessions, this.sessionId );
 
 	}
 	
@@ -265,59 +267,57 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	*/
 	remote struct function get() returnformat='json' {
 
-		local.request = deserializeJson(
-				toString( getHttpRequestData().content )
-			);
+		var request = deserializeJson( toString( getHttpRequestData().content ) );
+		var methodName = '';
+		var attribCollection = {};
+		var slots = {};
+		var slot = '';
 
-			this.sessionid = local.request.session.sessionid;
+		this.sessionid = request.session.sessionid;
 
-			switch( local.request.request.type ) {
+		switch( request.request.type ) {
 
-				case "IntentRequest":
-					
-					local.methodName = local.request.request.intent.name;
-
-					local.attribCollection = {};
-					if( structkeyexists( local.request.request.intent, "slots" );
-						local.slots = local.request.request.intent.slots;
-					} else {
-						local.slots = {};
-					}
-					
-					for( local.thisItem in local.slots ) {
-
-						if( structkeyExists( local.slots[ local.thisitem ], "value" );
-							local.attribCollection[ local.slots[ local.thisItem ].name ] = local.slots[ local.thisItem ].value;
-						} else {
-							/* handle optional values */
-							local.attribCollection[ local.slots[ local.thisItem ].name ] = "";
-						}
-
-					}
-
-					/* store intent info for on-going conversations */
-					setHistory( local.methodName, attribCollection );
-
-					/* get target method name from this.intents */
-					cfcMethod = variables[ this.intents[ local.methodName ] ];
-
-					cfcMethod( argumentCollection = local.attribCollection );
-
-					return getResponse();
-					break;
-
-				case "LaunchRequest":
-
-					this.sessionid = local.request.session.sessionid;
-					onLaunch( local.request.session );
-					return getResponse();
-					break;
+			case "IntentRequest":
 				
-				case "SessionEndedRequest":
+				methodName = request.request.intent.name;
 
-					onSessionEnd( local.request.session );
-					return {};
-					break;
+				if( structKeyExists( request.request.intent, "slots" );
+					slots = request.request.intent.slots;
+				}
+				
+				for( slot in slots ) {
+
+					if( structKeyExists( slots[ slot ], "value" );
+						attribCollection[ slots[ slot ].name ] = slots[ slot ].value;
+					} else {
+						/* handle optional values */
+						attribCollection[ slots[ slot ].name ] = "";
+					}
+
+				}
+
+				/* store intent info for on-going conversations */
+				setHistory( methodName, attribCollection );
+
+				/* get target method name from this.intents */
+				cfcMethod = variables[ this.intents[ methodName ] ];
+
+				cfcMethod( argumentCollection = attribCollection );
+
+				return getResponse();
+				break;
+
+			case "LaunchRequest":
+
+				onLaunch();
+				return getResponse();
+				break;
+			
+			case "SessionEndedRequest":
+
+				onSessionEnd();
+				return {};
+				break;
 		}
 
 	}
@@ -329,13 +329,12 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	*/
 	public struct function getResponse() {
 
-		local.response = duplicate( this.AlexaResponse );
-		local.response.response.outputSpeech.ssml = "<speak>" & local.response.response.outputSpeech.ssml & "</speak>";
+		var response = duplicate( this.AlexaResponse );
+		response.response.outputSpeech.ssml = "<speak>" & response.response.outputSpeech.ssml & "</speak>";
 
-		return local.response;
+		return response;
 
 	}
-
 
 	/* helper functions */
 
@@ -347,24 +346,26 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	*/
 	public struct function parseDates( required string date ) {
 
-		local.datePieces = listToArray(arguments.date,"-");
+		var datePieces = listToArray( arguments.date, "-" );
+		var startDate = '';
+		var endDate = '';
 		
-		if( date contains "W" ) {
+		if( arguments.date contains "W" ) {
 			
-			if( arraylen( local.datePieces ) is 2 and local.datePieces[ 2 ] contains "W" ) {
-				return parseWeek( local.datePieces );
-			} else if( arraylen( local.datePieces ) is 3 {
-				return parseWeekendDates( local.datepieces );
+			if( arraylen( datePieces ) is 2 and datePieces[ 2 ] contains "W" ) {
+				return parseWeek( datePieces );
+			} else if( arraylen( datePieces ) is 3 {
+				return parseWeekendDates( datepieces );
 			}	
 		
 		} else {
 		
-			local.startdate = createdatetime( datepieces[ 1 ], datepieces[ 2 ], datepieces[ 3 ], 0, 0, 0 );
-			local.enddate = createdatetime( datepieces[ 1 ], datepieces[ 2 ], datepieces[ 3 ], 23, 59, 59 );
+			startdate = createdatetime( datepieces[ 1 ], datepieces[ 2 ], datepieces[ 3 ], 0, 0, 0 );
+			enddate = createdatetime( datepieces[ 1 ], datepieces[ 2 ], datepieces[ 3 ], 23, 59, 59 );
 			
 			return {
-				startDate = dateformat( local.startDate, 'mm/dd/yyyy' ) & " " & timeformat( local.startDate, "HH:nn" ),
-				endDate = dateformat( local.startDate, 'mm/dd/yyyy' ) & " " & timeformat( local.endDate, "HH:nn" )
+				startDate = dateformat( startDate, 'mm/dd/yyyy' ) & " " & timeformat( startDate, "HH:nn" ),
+				endDate = dateformat( endDate, 'mm/dd/yyyy' ) & " " & timeformat( endDate, "HH:nn" )
 			};
 
 		}
@@ -379,14 +380,13 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	*/
 	private struct function parseWeekendDates( required array date ) {
 
-		local.weekNumber = removeChars( arguments.date[ 2 ], 1, 1 );
-		local.weekStart = parseDatetime( getDateByWeek( arguments.date[ 1 ], local.weekNumber ) );
-		local.weekendStart = dateAdd( 'd', 5, local.weekStart );
-		local.weekendEnd = dateAdd( 'd', 1, local.weekendStart );
+		var weekNumber = removeChars( arguments.date[ 2 ], 1, 1 );
+		var weekStart = parseDatetime( getDateByWeek( arguments.date[ 1 ], weekNumber ) );
+		var weekendStart = dateAdd( 'd', 5, weekStart );
 
 		return {
-			startDate = dateFormat( local.weekendStart, "mm/dd/yyyy" ),
-			endDate = dateFormat( local.weekendEnd, "mm/dd/yyyy" ) & " 23:59"
+			startDate = dateFormat( weekendStart, "mm/dd/yyyy" ) & " 00:00",
+			endDate = dateFormat( dateAdd( 'd', 1, weekendStart ), "mm/dd/yyyy" ) & " 23:59"
 		};
 
 	}
@@ -399,20 +399,12 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	*/
 	private struct function parseWeek( required array date ) {
 
-		if( !arraylen( arguments.date ) is 2 ) {
-			throw message="invalid format for week specification";
-		}
-
-		local.weekNumber = removeChars( arguments.date[ 2 ], 1, 1 );
-		 
-		local.startDate = getDateByWeek( arguments.date[ 1 ], local.weekNumber );
-		 
-		local.endDate = dateAdd( 'd', 6, parseDatetime( local.startDate ) );
-		local.endDate = dateformat( local.endDate, 'mm/dd/yyyy' ) & " 23:59";
+		var weekNumber = removeChars( arguments.date[ 2 ], 1, 1 );
+		var startDate = getDateByWeek( arguments.date[ 1 ], weekNumber );
 
 		return {
-			startDate = local.startDate,
-			endDate = local.endDate
+			startDate = startDate,
+			endDate = dateformat( dateAdd( 'd', 6, parseDatetime( startDate ) ), 'mm/dd/yyyy' ) & " 23:59";
 		};
 
 	}
@@ -426,13 +418,13 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	*/
 	public date function getDateByWeek( required numeric year, required numeric week ) {
 
-		local.firstDayOfYear = CreateDate( arguments.year, 1, 1 );
+		var firstDayOfYear = CreateDate( arguments.year, 1, 1 );
 
-		local.firstDayOfCalendarYear = ( local.firstDayOfYear - DayOfWeek( local.firstDayOfYear ) + 2 );
+		var firstDayOfCalendarYear = ( firstDayOfYear - DayOfWeek( firstDayOfYear ) + 2 );
 
-		local.firstDayOfWeek = ( local.firstDayOfCalendarYear + ( ( arguments.week - 1 ) * 7 ) );
+		var firstDayOfWeek = ( firstDayOfCalendarYear + ( ( arguments.week - 1 ) * 7 ) );
 
-		return DateFormat( local.firstDayOfWeek, 'mm/dd/yyyy' );
+		return DateFormat( firstDayOfWeek, 'mm/dd/yyyy' );
 
 	}
 
