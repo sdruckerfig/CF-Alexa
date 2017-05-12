@@ -78,7 +78,7 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	*/
 	public void function say( required string text ) {
 
-		this.AlexaResponse.response.outputSpeech.ssml = this.AlexaResponse.response.outputSpeech.ssml & "<p;" & arguments.text & "</p;";
+		this.AlexaResponse.response.outputSpeech.ssml &= "<p>" & arguments.text & "</p>";
 
 	}
 
@@ -330,7 +330,7 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	public struct function getResponse() {
 
 		local.response = duplicate( this.AlexaResponse );
-		local.response.response.outputSpeech.ssml = "<speak;" & local.response.response.outputSpeech.ssml & "</speak;";
+		local.response.response.outputSpeech.ssml = "<speak>" & local.response.response.outputSpeech.ssml & "</speak>";
 
 		return local.response;
 
