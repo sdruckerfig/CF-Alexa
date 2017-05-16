@@ -281,13 +281,13 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 				
 				methodName = request.request.intent.name;
 
-				if( structKeyExists( request.request.intent, "slots" );
+				if( structKeyExists( request.request.intent, "slots" ) ) {
 					slots = request.request.intent.slots;
 				}
 				
 				for( slot in slots ) {
 
-					if( structKeyExists( slots[ slot ], "value" );
+					if( structKeyExists( slots[ slot ], "value" ) ) {
 						attribCollection[ slots[ slot ].name ] = slots[ slot ].value;
 					} else {
 						/* handle optional values */
@@ -354,7 +354,7 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 			
 			if( arraylen( datePieces ) is 2 and datePieces[ 2 ] contains "W" ) {
 				return parseWeek( datePieces );
-			} else if( arraylen( datePieces ) is 3 {
+			} else if( arraylen( datePieces ) is 3 ) {
 				return parseWeekendDates( datepieces );
 			}	
 		
