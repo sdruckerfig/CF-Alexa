@@ -214,7 +214,7 @@ component output="false" displayname="Alexa" hint="Extend this CFC to create you
 	* @description	I set the session history
 	* @return		void
 	*/
-	public void function setHistory( required string intent, required string slots ) {
+	public void function setHistory( required string intent, required struct slots ) {
 
 		if( this.isTesting and not structkeyExists( application.AlexaSessions, this.sessionId ) ) {
 			application.AlexaSessions[ this.sessionId ] = {
