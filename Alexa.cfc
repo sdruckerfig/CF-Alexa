@@ -170,11 +170,15 @@
 		<cfargument name="intent" type="string" required="yes">
 		<cfargument name="slots" type="struct" required="yes">
 
-		<cfif this.isTesting and not structkeyExists(application.AlexaSessions,this.sessionId)>
+		<cfif not structkeyExists(Application,"AlexaSessions")>
+			<cfset Application.AlexaSessions = {}>
+		</cfif>
+		<cfif not structkeyExists(application.AlexaSessions,this.sessionId)>
 			<cfset Application.AlexaSessions[this.sessionId] = {
 				history = []
 			}>
 		</cfif>
+
 		<cfset arrayPrepend(application.AlexaSessions[this.sessionId].history, {
 			intent = arguments.intent,
 			slots = arguments.slots
